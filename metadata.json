@@ -1,0 +1,11 @@
+{
+  "name": "SS Design Studio",
+  "description": "Professional architectural floor plan studio with 2D blueprints, 3D holographic view, AI design assistant, and gesture control by SS Developments.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
