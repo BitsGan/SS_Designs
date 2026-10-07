@@ -437,7 +437,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                           >
                             <div
                               className="w-3 h-3 rounded-full shrink-0 border border-white/20"
-                              style={{ backgroundColor: cfg.colorHex }}
+                              style={{ backgroundColor: cfg.color2D }}
                             />
                             <span className="text-[10px] font-dm-sans truncate">{cfg.label}</span>
                           </button>

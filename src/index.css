@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Remove all borders and border colors across all cards and components */
+*,
+*::before,
+*::after {
+  border-color: transparent !important;
+  border-width: 0 !important;
+  border-style: none !important;
+}
+
 @layer base {
   body {
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

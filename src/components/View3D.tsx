@@ -591,7 +591,7 @@ export const View3D: React.FC<View3DProps> = ({
                   <div key={w.type} className="p-3 bg-[#111827] border border-[#1e293b] rounded-xl flex items-start gap-3">
                     <div
                       className="w-8 h-8 rounded-lg shrink-0 border border-white/20 shadow-md"
-                      style={{ backgroundColor: w.colorHex }}
+                      style={{ backgroundColor: w.color2D }}
                     />
                     <div>
                       <div className="text-xs font-bold text-white font-dm-sans flex items-center gap-1.5">

@@ -182,6 +182,7 @@ export interface FlooringMaterialInfo {
   metalness: number;
   category: 'Wood' | 'Stone & Tile' | 'Industrial' | 'Soft' | 'Outdoor';
   description: string;
+  isWaterproof?: boolean;
 }
 
 export const FLOORING_MATERIALS: Record<FlooringType, FlooringMaterialInfo> = {
