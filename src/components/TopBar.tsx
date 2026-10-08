@@ -16,6 +16,7 @@ import {
   Wand2,
   Mic,
   Sun,
+  Moon,
   Compass,
   Armchair,
   Footprints,
@@ -45,6 +46,8 @@ interface TopBarProps {
   onToggleSolarBar: () => void;
   showSolarBar: boolean;
   projectName: string;
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -67,6 +70,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onToggleSolarBar,
   showSolarBar,
   projectName,
+  theme,
+  onToggleTheme,
 }) => {
   const [muted, setMuted] = useState(sound.isMuted());
   const [activeDropdown, setActiveDropdown] = useState<'tools' | 'project' | 'controls' | 'export' | null>(null);
@@ -407,8 +412,19 @@ export const TopBar: React.FC<TopBarProps> = ({
           )}
         </div>
 
-        {/* Quick Actions Pill: [ 🔊 | 🗑️ ] */}
+        {/* Quick Actions Pill: [ ☀️/🌙 | 🔊 | 🗑️ ] */}
         <div className="flex items-center bg-[#0d1424] rounded-lg p-0.5 shadow-sm">
+          <button
+            onClick={() => {
+              sound.playClick();
+              onToggleTheme();
+            }}
+            className="p-1.5 rounded-md hover:bg-[#1e293b] text-slate-400 hover:text-amber-400 transition-colors cursor-pointer"
+            title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+          >
+            {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+          </button>
+          <div className="w-[1px] h-3.5 bg-[#1e293b] my-auto mx-0.5" />
           <button
             onClick={toggleMute}
             className="p-1.5 rounded-md hover:bg-[#1e293b] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"

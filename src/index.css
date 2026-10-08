@@ -88,3 +88,131 @@
   border-radius: 2px;
 }
 
+/* ============================================================
+   LIGHT THEME OVERRIDES
+   Remap the app's hardcoded dark surfaces to a clean white
+   architectural studio look. Toggled via .theme-light on <html>.
+   ============================================================ */
+.theme-light body {
+  background-color: #f1f5f9;
+  color: #1e293b;
+}
+
+/* Panel / bar backgrounds */
+.theme-light .bg-\[\#0d1117\],
+.theme-light .bg-\[\#111827\],
+.theme-light .bg-\[\#0b0f19\],
+.theme-light .bg-\[\#0a0f1d\],
+.theme-light .bg-\[\#0b1322\],
+.theme-light .bg-\[\#0d1424\],
+.theme-light .bg-\[\#080d17\],
+.theme-light .bg-\[\#080d1a\],
+.theme-light .bg-\[\#0a0d16\],
+.theme-light .bg-\[\#0a0c1a\],
+.theme-light .bg-\[\#0f172a\] {
+  background-color: #ffffff !important;
+}
+
+.theme-light .bg-\[\#111c33\] {
+  background-color: #eef4fb !important;
+}
+
+/* Slightly raised secondary surfaces */
+.theme-light .bg-\[\#1e293b\],
+.theme-light .bg-\[\#0a0814\],
+.theme-light .bg-\[\#111827\]\/90,
+.theme-light .bg-\[\#0a0f1d\]\/95,
+.theme-light .bg-\[\#0a0c1a\]\/95,
+.theme-light .bg-\[\#0a0814\]\/90,
+.theme-light .bg-\[\#0a0f1d\]\/90 {
+  background-color: #e2e8f0 !important;
+}
+
+.theme-light .bg-\[\#0d1424\]\/95,
+.theme-light .bg-\[\#111827\]\/95 {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+}
+
+/* Inner controls & inputs */
+.theme-light .bg-\[\#0d1117\],
+.theme-light input,
+.theme-light select,
+.theme-light textarea {
+  color: #1e293b;
+}
+
+.theme-light .border-\[\#1e293b\],
+.theme-light .border-\[\#1e3a5f\] {
+  border-color: #cbd5e1 !important;
+}
+
+/* Default text: slate-100/200/300/400 -> dark grays */
+.theme-light .text-slate-100,
+.theme-light .text-slate-200,
+.theme-light .text-slate-300 {
+  color: #1e293b !important;
+}
+.theme-light .text-slate-400,
+.theme-light .text-slate-500,
+.theme-light .text-slate-600 {
+  color: #64748b !important;
+}
+.theme-light .text-white {
+  color: #0f172a !important;
+}
+
+/* Brand cyan darkens for contrast on white */
+.theme-light .text-\[\#4fc3f7\] {
+  color: #0284c7 !important;
+}
+.theme-light .bg-\[\#4fc3f7\] {
+  background-color: #0ea5e9 !important;
+}
+.theme-light .hover\:bg-\[\#38bdf8\]:hover {
+  background-color: #0284c7 !important;
+}
+
+/* Active pills / selected states */
+.theme-light .bg-\[\#1e3a5f\] {
+  background-color: #e0efff !important;
+}
+.theme-light .bg-\[\#1e3a5f\].text-\[\#4fc3f7\],
+.theme-light .text-\[\#4fc3f7\].font-semibold,
+.theme-light .text-\[\#4fc3f7\].font-bold {
+  color: #0369a1 !important;
+}
+.theme-light .hover\:bg-\[\#1e293b\]:hover {
+  background-color: #e2e8f0 !important;
+}
+.theme-light .hover\:bg-\[\#1e3a5f\]:hover {
+  background-color: #e0efff !important;
+}
+.theme-light .hover\:bg-slate-800\/60:hover,
+.theme-light .hover\:bg-slate-800:hover,
+.theme-light .hover\:bg-\[0d1424\]:hover {
+  background-color: #dbe4ee !important;
+}
+.theme-light .hover\:bg-\[\#1a243a\]:hover,
+.theme-light .hover\:bg-\[\#2563eb\]:hover {
+  background-color: #dbeafe !important;
+}
+
+/* Scrollbar */
+.theme-light .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+}
+
+/* Modal backdrops lighten slightly */
+.theme-light .bg-black\/80,
+.theme-light .bg-black\/60 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+/* White text on accent buttons stays white */
+.theme-light button.bg-gradient-to-r.text-white,
+.theme-light button.bg-\[\#2563eb\].text-white,
+.theme-light button.bg-\[\#10b981\].text-slate-950,
+.theme-light .bg-\[\#f59e0b\] .text-slate-950,
+.theme-light .text-slate-950 {
+  color: inherit !important;
+}

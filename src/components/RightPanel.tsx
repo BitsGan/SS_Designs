@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RenderStyle, AppMode, CanvasElement, Layer, RoomType, FurnitureType, WallType, FlooringType } from '../types';
-import { Plus, Eye, EyeOff, Layers, Armchair, Trash2, Sliders, Box, Palette, Sparkles } from 'lucide-react';
+import { Plus, Eye, EyeOff, Layers, Armchair, Trash2, Sliders, Box, Palette, Sparkles, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { sound } from '../utils/audio';
 import { FurniturePalette } from './FurniturePalette';
 import { WALL_TYPE_CONFIG, FLOORING_MATERIALS } from '../utils/floorAndWallUtils';
@@ -30,6 +30,8 @@ interface RightPanelProps {
   onToggleLayerVisible: (id: number) => void;
   onAddLayer: () => void;
   elements: CanvasElement[];
+  isOpen: boolean;
+  onTogglePanel: () => void;
 }
 
 const STYLES: { id: RenderStyle; label: string }[] = [
@@ -76,6 +78,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   onToggleLayerVisible,
   onAddLayer,
   elements,
+  isOpen,
+  onTogglePanel,
 }) => {
   const [activeTab, setActiveTab] = useState<'inspector' | 'furniture' | 'rooms'>('inspector');
 
@@ -125,7 +129,43 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   };
 
   return (
-    <aside className="w-[230px] bg-[#111827] border-l border-[#1e293b] flex flex-col shrink-0 overflow-y-auto custom-scrollbar select-none z-20 text-slate-300 divide-y divide-[#1e293b]">
+    <>
+      {/* Collapsed state: floating expand button */}
+      {!isOpen && (
+        <button
+          onClick={() => {
+            sound.playClick();
+            onTogglePanel();
+          }}
+          className="absolute top-2 right-2 z-30 p-2 rounded-lg bg-[#111827] hover:bg-[#1e293b] border border-[#1e293b] text-slate-400 hover:text-[#4fc3f7] shadow-lg backdrop-blur cursor-pointer transition-colors"
+          title="Open Properties Panel"
+        >
+          <PanelRightOpen className="w-4 h-4" />
+        </button>
+      )}
+
+      <aside
+        className={`bg-[#111827] border-l border-[#1e293b] flex flex-col shrink-0 custom-scrollbar select-none z-20 text-slate-300 divide-y divide-[#1e293b] transition-all duration-300 ${
+          isOpen ? 'w-[230px] overflow-y-auto' : 'w-0 border-l-0 overflow-hidden'
+        }`}
+      >
+      {/* Panel Header with Collapse Toggle */}
+      <div className="py-1.5 px-2 bg-[#0d1424] border-b border-[#1e293b] flex items-center justify-between shrink-0">
+        <span className="text-[9px] font-dm-mono uppercase tracking-[1.5px] text-slate-400 font-semibold pl-1">
+          Inspector
+        </span>
+        <button
+          onClick={() => {
+            sound.playClick();
+            onTogglePanel();
+          }}
+          className="p-1 rounded hover:bg-[#1e293b] text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
+          title="Collapse Panel"
+        >
+          <PanelRightClose className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
       {/* Tab Navigation in Right Panel */}
       <div className="p-1.5 bg-[#0d1424] flex gap-1 border-b border-[#1e293b] shrink-0">
         <button
@@ -689,6 +729,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           <span>Add Layer</span>
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 };

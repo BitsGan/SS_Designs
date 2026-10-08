@@ -69,12 +69,37 @@ export const GestureControl: React.FC<GestureControlProps> = ({
   const drawStartRef = useRef<{ x: number; y: number } | null>(null);
   const isDraggingGestureRef = useRef<boolean>(false);
   const cameraInstanceRef = useRef<any>(null);
+  const handleResultsRef = useRef<(results: any) => void>(() => {});
+  const cameraErrorShownRef = useRef(false);
+
+  // Keep the latest handler reachable from the persistent MediaPipe callback (avoids stale closures)
+  useEffect(() => {
+    handleResultsRef.current = handleResults;
+  });
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((prev) => (prev === msg ? null : prev));
     }, 1800);
+  };
+
+  // Forward pinch actions to the main blueprint canvas via synthetic mouse events
+  const dispatchCanvasMouse = (type: string, x: number, y: number) => {
+    const target = Array.from(document.querySelectorAll('canvas')).find(
+      (c) => typeof c.className === 'string' && c.className.includes('cursor-crosshair')
+    );
+    if (!target) return false;
+    target.dispatchEvent(
+      new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        clientY: y,
+        button: 0,
+      })
+    );
+    return true;
   };
 
   const smoothCursor = (nx: number, ny: number) => {
@@ -143,12 +168,7 @@ export const GestureControl: React.FC<GestureControlProps> = ({
 
         if (!isSubscribed) return;
 
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 320, height: 240, facingMode: 'user' },
-        });
-
         if (!videoRef.current) return;
-        videoRef.current.srcObject = stream;
 
         const Hands = (window as any).Hands;
         const Camera = (window as any).Camera;
@@ -166,26 +186,41 @@ export const GestureControl: React.FC<GestureControlProps> = ({
 
         hands.onResults((results: any) => {
           if (!isSubscribed) return;
-          handleResults(results);
+          handleResultsRef.current(results);
         });
 
         const cam = new Camera(videoRef.current, {
           onFrame: async () => {
             if (active && videoRef.current) {
-              await hands.send({ image: videoRef.current });
+              try {
+                await hands.send({ image: videoRef.current });
+              } catch (e) {
+                // Surface WASM/model load failures once instead of failing silently every frame
+                if (!cameraErrorShownRef.current) {
+                  cameraErrorShownRef.current = true;
+                  setStatus('❌ Model load failed');
+                  setActionLabel('Check internet connection');
+                  showToast('⚠️ Hand model failed to load');
+                }
+              }
             }
           },
           width: 320,
           height: 240,
         });
 
-        cam.start();
+        await cam.start();
         cameraInstanceRef.current = cam;
         showToast('✋ Hand Control Active');
       } catch (err: any) {
         console.error('Hand tracking error:', err);
-        setStatus('Camera error');
-        setActionLabel('Check permissions');
+        setStatus('❌ Gesture init failed');
+        setActionLabel(
+          err?.message?.includes('MediaPipe')
+            ? 'CDN blocked — check internet'
+            : 'Check camera permissions'
+        );
+        showToast('⚠️ ' + (err?.message || 'Camera init failed'));
       }
     };
 
@@ -285,6 +320,13 @@ export const GestureControl: React.FC<GestureControlProps> = ({
     const dy = (thumbY - iy) * screenH;
     const pinchDist = Math.sqrt(dx * dx + dy * dy);
     const isPinching = pinchDist < 36;
+    const isPointing = index && !middle && !ring && !pinky;
+
+    // Release any in-progress pinch stroke if the hand shape changed
+    if (!isPointing && drawStartRef.current) {
+      dispatchCanvasMouse('mouseup', cx, cy);
+      drawStartRef.current = null;
+    }
 
     const now = Date.now();
     const canTrigger = now - lastGestureTimeRef.current > 600;
@@ -365,19 +407,29 @@ export const GestureControl: React.FC<GestureControlProps> = ({
       return;
     }
 
-    // Index pointing -> Move / Pinch to draw
-    if (index && !middle && !ring && !pinky) {
+    // Index pointing -> Move cursor / Pinch to draw on the canvas
+    if (isPointing) {
       setStatus('☝️ Index Pointing');
       if (isPinching) {
-        setActionLabel('🤏 PINCHING (DRAW / SELECT)');
+        setActionLabel('🤏 PINCHING (DRAW / DRAG)');
         setCursorPos({ x: cx, y: cy, active: true, mode: 'pinching' });
         if (!drawStartRef.current) {
           drawStartRef.current = { x: cx, y: cy };
+          if (dispatchCanvasMouse('mousedown', cx, cy)) {
+            showToast('🤏 Pinch drawing started');
+          }
+        } else {
+          dispatchCanvasMouse('mousemove', cx, cy);
         }
       } else {
         setActionLabel('Tracking cursor');
         setCursorPos({ x: cx, y: cy, active: true, mode: 'normal' });
-        drawStartRef.current = null;
+        if (drawStartRef.current) {
+          dispatchCanvasMouse('mouseup', cx, cy);
+          drawStartRef.current = null;
+        } else {
+          dispatchCanvasMouse('mousemove', cx, cy);
+        }
       }
       return;
     }

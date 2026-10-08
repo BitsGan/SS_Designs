@@ -11,6 +11,7 @@ interface Canvas2DProps {
   currentTool: ToolType;
   currentColor: string;
   renderStyle: RenderStyle;
+  theme?: 'dark' | 'light';
   gridSize: number;
   strokeWidth: number;
   snapEnabled: boolean;
@@ -33,6 +34,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   currentTool,
   currentColor,
   renderStyle,
+  theme = 'dark',
   gridSize,
   strokeWidth,
   snapEnabled,
@@ -624,8 +626,11 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Apply Style Canvas Background
-    if (renderStyle === 'blueprint') {
+    // Apply Style Canvas Background (light theme forces white paper look)
+    if (theme === 'light') {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else if (renderStyle === 'blueprint') {
       ctx.fillStyle = '#0a1931';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     } else if (renderStyle === 'realistic') {
@@ -655,7 +660,9 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
       const gridW = 3000;
       const gridH = 2000;
       ctx.strokeStyle =
-        renderStyle === 'blueprint'
+        theme === 'light'
+          ? 'rgba(15, 23, 42, 0.12)'
+          : renderStyle === 'blueprint'
           ? 'rgba(79, 195, 247, 0.12)'
           : renderStyle === 'night'
           ? 'rgba(139, 92, 246, 0.1)'
@@ -848,7 +855,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         const areaM2 = Math.round((rw * 0.05) * (rh * 0.05) * 10) / 10;
         const areaSqFt = Math.round(areaM2 * 10.7639);
 
-        ctx.fillStyle = isSel ? '#f59e0b' : '#e2e8f0';
+        ctx.fillStyle = isSel ? '#b45309' : theme === 'light' ? '#1e293b' : '#e2e8f0';
         ctx.font = 'bold 11px "DM Mono", monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -860,7 +867,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
         ctx.fillText(`${areaM2} m² · ${areaSqFt} sq ft`, rx + rw / 2, ry + rh / 2 + 8);
 
         // Metric Dimension tags on sides
-        ctx.fillStyle = 'rgba(79, 195, 247, 0.7)';
+        ctx.fillStyle = theme === 'light' ? 'rgba(2, 132, 199, 0.85)' : 'rgba(79, 195, 247, 0.7)';
         ctx.font = '8px "DM Mono", monospace';
         ctx.fillText(`${Math.round(rw * 0.05 * 10) / 10}m`, rx + rw / 2, ry - 6);
         ctx.save();
@@ -1119,6 +1126,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
     strokeWidth,
     currentColor,
     layers,
+    theme,
   ]);
 
   // Request Animation Frame Redraw

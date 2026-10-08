@@ -140,6 +140,17 @@ export default function App() {
   const [voiceActive, setVoiceActive] = useState<boolean>(false);
   const [isWalkthrough, setIsWalkthrough] = useState<boolean>(false);
 
+  // Light / Dark Theme
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  // Right Side Panel Open / Collapsed
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
+
+  // Apply theme class to document root
+  useEffect(() => {
+    document.documentElement.classList.toggle('theme-light', theme === 'light');
+  }, [theme]);
+
   // Layers
   const [layers, setLayers] = useState<Layer[]>(INITIAL_LAYERS);
   const [activeLayer, setActiveLayer] = useState<number>(0);
@@ -811,6 +822,8 @@ export default function App() {
         onToggleSolarBar={() => setShowSolarBar(!showSolarBar)}
         showSolarBar={showSolarBar}
         projectName={projectMetadata.projectName}
+        theme={theme}
+        onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
       />
 
       {/* Solar & Wind Sunlight Simulation Control Bar */}
@@ -871,6 +884,7 @@ export default function App() {
                 currentTool={currentTool}
                 currentColor={currentColor}
                 renderStyle={renderStyle}
+                theme={theme}
                 gridSize={gridSize}
                 strokeWidth={strokeWidth}
                 snapEnabled={snapEnabled}
@@ -958,6 +972,8 @@ export default function App() {
           onToggleLayerVisible={handleToggleLayerVisible}
           onAddLayer={handleAddLayer}
           elements={elements}
+          isOpen={isRightPanelOpen}
+          onTogglePanel={() => setIsRightPanelOpen((open) => !open)}
         />
       </div>
 
