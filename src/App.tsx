@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
 import {
   CanvasElement,
   ToolType,
@@ -18,10 +18,8 @@ import { TopBar } from './components/TopBar';
 import { Sidebar } from './components/Sidebar';
 import { CanvasToolbar } from './components/CanvasToolbar';
 import { Canvas2D } from './components/Canvas2D';
-import { View3D } from './components/View3D';
 import { GestureControl } from './components/GestureControl';
 import { RightPanel } from './components/RightPanel';
-import { AIAssistant } from './components/AIAssistant';
 import { StatusBar } from './components/StatusBar';
 import { CinematicIntro } from './components/CinematicIntro';
 import { TemplatesModal } from './components/TemplatesModal';
@@ -31,6 +29,10 @@ import { AIGeneratorModal } from './components/AIGeneratorModal';
 import { VoiceControl } from './components/VoiceControl';
 import { PlotSettingsModal } from './components/PlotSettingsModal';
 import { SolarVentilationBar } from './components/SolarVentilationBar';
+
+// Lazy-load heavy 3D view and AI assistant to reduce initial bundle
+const View3D = lazy(() => import('./components/View3D').then((m) => ({ default: m.View3D })));
+const AIAssistant = lazy(() => import('./components/AIAssistant').then((m) => ({ default: m.AIAssistant })));
 import { FURNITURE_CATALOG } from './data/furnitureCatalog';
 import { TEMPLATES } from './data/templates';
 import { exportHighResPNG, exportToSVG } from './utils/exportUtils';
@@ -863,20 +865,22 @@ export default function App() {
           {/* View Container: 2D Canvas or 3D / Walkthrough Mode */}
           <div className="flex-1 relative overflow-hidden bg-[#0d1117]">
             {appMode === '3d' ? (
-              <View3D
-                elements={elements}
-                rotX={rot3dX}
-                rotY={rot3dY}
-                zoom={zoom3d}
-                wallHeight={height3d}
-                autoRotate={autoRotate}
-                isWalkthrough={isWalkthrough}
-                onToggleWalkthrough={() => setIsWalkthrough(!isWalkthrough)}
-                renderMode={renderStyle === 'blueprint' ? 'holographic' : 'realistic'}
-                solarState={solarState}
-                plotConfig={plotConfig}
-                onToggleInteractiveState={handleToggleInteractiveState}
-              />
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center bg-[#0d1117] text-cyan-400 font-dm-mono text-xs">Loading 3D engine…</div>}>
+                <View3D
+                  elements={elements}
+                  rotX={rot3dX}
+                  rotY={rot3dY}
+                  zoom={zoom3d}
+                  wallHeight={height3d}
+                  autoRotate={autoRotate}
+                  isWalkthrough={isWalkthrough}
+                  onToggleWalkthrough={() => setIsWalkthrough(!isWalkthrough)}
+                  renderMode={renderStyle === 'blueprint' ? 'holographic' : 'realistic'}
+                  solarState={solarState}
+                  plotConfig={plotConfig}
+                  onToggleInteractiveState={handleToggleInteractiveState}
+                />
+              </Suspense>
             ) : (
               <Canvas2D
                 elements={elements}
@@ -978,7 +982,9 @@ export default function App() {
       </div>
 
       {/* Floating AI Architectural Assistant */}
-      <AIAssistant canvasSnapshot={canvasSnapshot} onExecuteAction={handleExecuteAIAction} />
+      <Suspense fallback={null}>
+        <AIAssistant canvasSnapshot={canvasSnapshot} onExecuteAction={handleExecuteAIAction} />
+      </Suspense>
 
       {/* Bottom Status Bar */}
       <StatusBar
