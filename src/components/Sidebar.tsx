@@ -79,6 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTool, onSelectTool }) =>
                   : 'text-slate-400 hover:bg-[#1e293b] hover:text-slate-200'
               }`}
               title={`${tool.label} ${tool.shortcut ? `[${tool.shortcut}]` : ''}`}
+              aria-label={`${tool.label} ${tool.shortcut ? `Shortcut key ${tool.shortcut}` : ''}`}
             >
               <Icon className="w-4 h-4" />
               <span className="text-[7.5px] font-dm-mono mt-0.5 tracking-tight font-medium opacity-80 leading-none">

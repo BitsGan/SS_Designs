@@ -37,6 +37,7 @@ const TOOLS_ORDER: ToolType[] = [
 
 export const GestureControl: React.FC<GestureControlProps> = ({
   active,
+  onToggle,
   currentTool,
   onSetTool,
   renderStyle,
@@ -56,6 +57,9 @@ export const GestureControl: React.FC<GestureControlProps> = ({
   const [actionLabel, setActionLabel] = useState<string>('Show hand to camera');
   const [confidence, setConfidence] = useState<number>(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [permissionState, setPermissionState] = useState<'idle' | 'checking' | 'granted' | 'denied' | 'unsupported'>('idle');
+  const [showPermissionModal, setShowPermissionModal] = useState<boolean>(false);
+  const [guideTab, setGuideTab] = useState<'gestures' | 'keyboard'>('gestures');
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number; active: boolean; mode: string }>({
     x: -100,
     y: -100,
@@ -81,7 +85,7 @@ export const GestureControl: React.FC<GestureControlProps> = ({
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 1800);
+    }, 2400);
   };
 
   // Forward pinch actions to the main blueprint canvas via synthetic mouse events
@@ -143,6 +147,35 @@ export const GestureControl: React.FC<GestureControlProps> = ({
     let isSubscribed = true;
 
     const initTracking = async () => {
+      setPermissionState('checking');
+
+      // Check mediaDevices support
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setPermissionState('unsupported');
+        setShowPermissionModal(true);
+        setStatus('⚠️ Camera Unsupported');
+        setActionLabel('Use Mouse & Keyboard');
+        showToast('Camera not available — Mouse/Keyboard mode active');
+        return;
+      }
+
+      // Check permission status if API available
+      if (navigator.permissions && navigator.permissions.query) {
+        try {
+          const statusResult = await navigator.permissions.query({ name: 'camera' as any });
+          if (statusResult.state === 'denied') {
+            setPermissionState('denied');
+            setShowPermissionModal(true);
+            setStatus('❌ Camera Denied');
+            setActionLabel('Permissions blocked');
+            showToast('⚠️ Camera permission denied — use mouse & keyboard');
+            return;
+          }
+        } catch {
+          // Permissions API might not support 'camera' in all browsers; continue to getUserMedia
+        }
+      }
+
       try {
         // Load MediaPipe scripts on demand if not present
         if (!(window as any).Hands) {
@@ -167,7 +200,6 @@ export const GestureControl: React.FC<GestureControlProps> = ({
         }
 
         if (!isSubscribed) return;
-
         if (!videoRef.current) return;
 
         const Hands = (window as any).Hands;
@@ -195,7 +227,6 @@ export const GestureControl: React.FC<GestureControlProps> = ({
               try {
                 await hands.send({ image: videoRef.current });
               } catch (e) {
-                // Surface WASM/model load failures once instead of failing silently every frame
                 if (!cameraErrorShownRef.current) {
                   cameraErrorShownRef.current = true;
                   setStatus('❌ Model load failed');
@@ -210,17 +241,32 @@ export const GestureControl: React.FC<GestureControlProps> = ({
         });
 
         await cam.start();
+        setPermissionState('granted');
         cameraInstanceRef.current = cam;
         showToast('✋ Hand Control Active');
       } catch (err: any) {
         console.error('Hand tracking error:', err);
-        setStatus('❌ Gesture init failed');
-        setActionLabel(
-          err?.message?.includes('MediaPipe')
-            ? 'CDN blocked — check internet'
-            : 'Check camera permissions'
-        );
-        showToast('⚠️ ' + (err?.message || 'Camera init failed'));
+        const isPermissionDenied =
+          err?.name === 'NotAllowedError' ||
+          err?.name === 'PermissionDeniedError' ||
+          err?.message?.includes('denied') ||
+          err?.message?.includes('Permission');
+
+        if (isPermissionDenied) {
+          setPermissionState('denied');
+          setShowPermissionModal(true);
+          setStatus('❌ Camera Blocked');
+          setActionLabel('Permission Denied');
+          showToast('⚠️ Camera blocked — Mouse & keyboard active');
+        } else {
+          setStatus('❌ Gesture init failed');
+          setActionLabel(
+            err?.message?.includes('MediaPipe')
+              ? 'CDN blocked — check internet'
+              : 'Check camera device'
+          );
+          showToast('⚠️ ' + (err?.message || 'Camera init failed'));
+        }
       }
     };
 
@@ -507,48 +553,167 @@ export const GestureControl: React.FC<GestureControlProps> = ({
         </div>
       )}
 
-      {/* Gesture Help Modal */}
-      {showGuide && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-purple-500 rounded-xl p-6 max-w-md w-full shadow-2xl text-slate-200">
-            <h3 className="font-bebas text-2xl tracking-wider text-purple-300 mb-3 flex items-center gap-2">
-              <span>✋</span> Hand Gesture Controls
-            </h3>
-            <div className="space-y-2 text-xs font-dm-mono divide-y divide-slate-800">
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-purple-300 font-bold">☝️ Index Only</span>
-                <span className="text-slate-400">Aim & move cursor</span>
+      {/* Camera Permission Denial / Unsupported Alert Modal */}
+      {showPermissionModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-amber-500/50 rounded-2xl p-6 max-w-md w-full shadow-2xl text-slate-200">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl shrink-0">
+                📷
               </div>
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-purple-300 font-bold">🤏 Pinch (Thumb+Index)</span>
-                <span className="text-slate-400">Draw / Drag / Select</span>
-              </div>
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-purple-300 font-bold">✌️ 2 Fingers + Swipe</span>
-                <span className="text-slate-400">Switch tool left / right</span>
-              </div>
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-purple-300 font-bold">🖖 3 Fingers</span>
-                <span className="text-slate-400">Cycle render style</span>
-              </div>
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-purple-300 font-bold">✊ Fist</span>
-                <span className="text-slate-400">Undo last action</span>
-              </div>
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-purple-300 font-bold">🖐 Open Hand (5 fingers)</span>
-                <span className="text-slate-400">Switch to Select Mode</span>
-              </div>
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-purple-300 font-bold">🤙 Thumb + Pinky</span>
-                <span className="text-slate-400">Delete selected item</span>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bebas text-2xl tracking-wide text-amber-300">
+                  {permissionState === 'unsupported' ? 'Camera Not Supported' : 'Camera Access Blocked'}
+                </h3>
+                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  {permissionState === 'unsupported'
+                    ? 'Camera hardware or WebRTC media stream is unavailable in this environment.'
+                    : 'Camera permission is blocked or was declined. SS Design Studio uses your webcam locally for real-time optical hand tracking — video never leaves your browser.'}
+                </p>
               </div>
             </div>
+
+            <div className="bg-[#0a0f1d] rounded-xl p-3 mb-4 border border-slate-800 text-xs font-dm-mono space-y-1.5 text-slate-300">
+              <div className="text-[#4fc3f7] font-semibold text-[11px] mb-1">
+                ⌨️ Complete Mouse & Keyboard Fallback Active:
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Draw / Select / Move:</span>
+                <span className="text-slate-200 font-bold">Mouse Left Click & Drag</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Select Tool (S):</span>
+                <span className="text-slate-200 font-bold">Room (R), Wall (W), Door (D)</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Undo Last Action:</span>
+                <span className="text-slate-200 font-bold">Ctrl + Z</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Delete Active Item:</span>
+                <span className="text-slate-200 font-bold">Delete / Backspace</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowPermissionModal(false);
+                  onToggle(); // Turn off camera mode
+                  showToast('Mouse & Keyboard drafting active');
+                }}
+                className="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-dm-mono text-xs font-semibold rounded-xl cursor-pointer transition-all shadow-md"
+              >
+                Use Mouse & Keyboard
+              </button>
+              <button
+                onClick={() => setShowPermissionModal(false)}
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-dm-mono text-xs rounded-xl cursor-pointer transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gesture & Keyboard Controls Modal */}
+      {showGuide && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-purple-500/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl text-slate-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bebas text-2xl tracking-wider text-purple-300 flex items-center gap-2">
+                <span>✋</span> Controls & Input Methods
+              </h3>
+              <div className="flex bg-[#0a0f1d] rounded-lg p-0.5 border border-slate-800 text-xs font-dm-mono">
+                <button
+                  onClick={() => setGuideTab('gestures')}
+                  className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
+                    guideTab === 'gestures' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Hand Gestures
+                </button>
+                <button
+                  onClick={() => setGuideTab('keyboard')}
+                  className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
+                    guideTab === 'keyboard' ? 'bg-[#1e3a5f] text-[#4fc3f7] font-bold' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Mouse / Keyboard
+                </button>
+              </div>
+            </div>
+
+            {guideTab === 'gestures' ? (
+              <div className="space-y-2 text-xs font-dm-mono divide-y divide-slate-800">
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-purple-300 font-bold">☝️ Index Only</span>
+                  <span className="text-slate-400">Aim & move cursor</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-purple-300 font-bold">🤏 Pinch (Thumb+Index)</span>
+                  <span className="text-slate-400">Draw / Drag / Select</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-purple-300 font-bold">✌️ 2 Fingers + Swipe</span>
+                  <span className="text-slate-400">Switch tool left / right</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-purple-300 font-bold">🖖 3 Fingers</span>
+                  <span className="text-slate-400">Cycle render style</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-purple-300 font-bold">✊ Fist</span>
+                  <span className="text-slate-400">Undo last action</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-purple-300 font-bold">🖐 Open Hand (5 fingers)</span>
+                  <span className="text-slate-400">Switch to Select Mode</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-purple-300 font-bold">🤙 Thumb + Pinky</span>
+                  <span className="text-slate-400">Delete selected item</span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2 text-xs font-dm-mono divide-y divide-slate-800">
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-[#4fc3f7] font-bold">Left Click & Drag</span>
+                  <span className="text-slate-400">Draw geometry / Move elements</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-[#4fc3f7] font-bold">R / W / D / C keys</span>
+                  <span className="text-slate-400">Room, Wall, Door, Circle tools</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-[#4fc3f7] font-bold">S key</span>
+                  <span className="text-slate-400">Select & Inspect tool</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-[#4fc3f7] font-bold">Ctrl + Z</span>
+                  <span className="text-slate-400">Undo last canvas change</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-[#4fc3f7] font-bold">Delete / Backspace</span>
+                  <span className="text-slate-400">Delete selected element</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-[#4fc3f7] font-bold">WASD / Arrow Keys</span>
+                  <span className="text-slate-400">Walk in 1st-person 3D mode</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-[#4fc3f7] font-bold">Esc key</span>
+                  <span className="text-slate-400">Exit 3D walkthrough mode</span>
+                </div>
+              </div>
+            )}
+
             <button
               onClick={onCloseGuide}
-              className="mt-5 w-full py-2 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500 text-purple-200 rounded-lg font-dm-mono text-xs cursor-pointer transition-colors"
+              className="mt-5 w-full py-2.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500 text-purple-200 rounded-xl font-dm-mono text-xs cursor-pointer transition-colors font-semibold"
             >
-              Got it! Start Designing
+              Start Designing
             </button>
           </div>
         </div>

@@ -18,21 +18,22 @@ import { TopBar } from './components/TopBar';
 import { Sidebar } from './components/Sidebar';
 import { CanvasToolbar } from './components/CanvasToolbar';
 import { Canvas2D } from './components/Canvas2D';
-import { GestureControl } from './components/GestureControl';
 import { RightPanel } from './components/RightPanel';
 import { StatusBar } from './components/StatusBar';
-import { CinematicIntro } from './components/CinematicIntro';
-import { TemplatesModal } from './components/TemplatesModal';
-import { AnalysisModal } from './components/AnalysisModal';
-import { ProjectSettingsModal } from './components/ProjectSettingsModal';
-import { AIGeneratorModal } from './components/AIGeneratorModal';
-import { VoiceControl } from './components/VoiceControl';
-import { PlotSettingsModal } from './components/PlotSettingsModal';
-import { SolarVentilationBar } from './components/SolarVentilationBar';
 
-// Lazy-load heavy 3D view and AI assistant to reduce initial bundle
+// Lazy-load heavy views, modals, and auxiliary controls to optimize initial bundle size
 const View3D = lazy(() => import('./components/View3D').then((m) => ({ default: m.View3D })));
 const AIAssistant = lazy(() => import('./components/AIAssistant').then((m) => ({ default: m.AIAssistant })));
+const CinematicIntro = lazy(() => import('./components/CinematicIntro').then((m) => ({ default: m.CinematicIntro })));
+const VoiceControl = lazy(() => import('./components/VoiceControl').then((m) => ({ default: m.VoiceControl })));
+const GestureControl = lazy(() => import('./components/GestureControl').then((m) => ({ default: m.GestureControl })));
+const SolarVentilationBar = lazy(() => import('./components/SolarVentilationBar').then((m) => ({ default: m.SolarVentilationBar })));
+const TemplatesModal = lazy(() => import('./components/TemplatesModal').then((m) => ({ default: m.TemplatesModal })));
+const AnalysisModal = lazy(() => import('./components/AnalysisModal').then((m) => ({ default: m.AnalysisModal })));
+const ProjectSettingsModal = lazy(() => import('./components/ProjectSettingsModal').then((m) => ({ default: m.ProjectSettingsModal })));
+const AIGeneratorModal = lazy(() => import('./components/AIGeneratorModal').then((m) => ({ default: m.AIGeneratorModal })));
+const PlotSettingsModal = lazy(() => import('./components/PlotSettingsModal').then((m) => ({ default: m.PlotSettingsModal })));
+
 import { FURNITURE_CATALOG } from './data/furnitureCatalog';
 import { TEMPLATES } from './data/templates';
 import { exportHighResPNG, exportToSVG } from './utils/exportUtils';
@@ -794,14 +795,20 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0d1117] overflow-hidden select-none font-dm-sans text-slate-100">
       {/* Intro Overlay */}
-      <CinematicIntro />
+      <Suspense fallback={null}>
+        <CinematicIntro />
+      </Suspense>
 
       {/* Voice Architecture Control Floating Banner */}
-      <VoiceControl
-        isActive={voiceActive}
-        onToggle={() => setVoiceActive(!voiceActive)}
-        onExecuteVoiceCommand={handleExecuteVoiceCommand}
-      />
+      {voiceActive && (
+        <Suspense fallback={null}>
+          <VoiceControl
+            isActive={voiceActive}
+            onToggle={() => setVoiceActive(!voiceActive)}
+            onExecuteVoiceCommand={handleExecuteVoiceCommand}
+          />
+        </Suspense>
+      )}
 
       {/* Top Application Bar */}
       <TopBar
@@ -830,11 +837,13 @@ export default function App() {
 
       {/* Solar & Wind Sunlight Simulation Control Bar */}
       {showSolarBar && (
-        <SolarVentilationBar
-          solarState={solarState}
-          onChangeSolarState={setSolarState}
-          northAngleDeg={plotConfig.northAngleDeg}
-        />
+        <Suspense fallback={null}>
+          <SolarVentilationBar
+            solarState={solarState}
+            onChangeSolarState={setSolarState}
+            northAngleDeg={plotConfig.northAngleDeg}
+          />
+        </Suspense>
       )}
 
       {/* Main Studio Workspace */}
@@ -905,21 +914,25 @@ export default function App() {
             )}
 
             {/* Hand Gesture Tracking Overlay */}
-            <GestureControl
-              active={gestureActive}
-              onToggle={() => setGestureActive(!gestureActive)}
-              currentTool={currentTool}
-              onSetTool={setCurrentTool}
-              renderStyle={renderStyle}
-              onSetRenderStyle={setRenderStyle}
-              onUndo={handleUndo}
-              elements={elements}
-              setElements={setElements}
-              selectedElementId={selectedElementId}
-              onSelectElement={(el) => setSelectedElementId(el ? el.id : null)}
-              showGuide={showGestureGuide}
-              onCloseGuide={() => setShowGestureGuide(false)}
-            />
+            {(gestureActive || showGestureGuide) && (
+              <Suspense fallback={null}>
+                <GestureControl
+                  active={gestureActive}
+                  onToggle={() => setGestureActive(!gestureActive)}
+                  currentTool={currentTool}
+                  onSetTool={setCurrentTool}
+                  renderStyle={renderStyle}
+                  onSetRenderStyle={setRenderStyle}
+                  onUndo={handleUndo}
+                  elements={elements}
+                  setElements={setElements}
+                  selectedElementId={selectedElementId}
+                  onSelectElement={(el) => setSelectedElementId(el ? el.id : null)}
+                  showGuide={showGestureGuide}
+                  onCloseGuide={() => setShowGestureGuide(false)}
+                />
+              </Suspense>
+            )}
 
             {/* Bottom Floating Mode Pill */}
             <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 bg-[#111827]/90 border border-[#1e293b] rounded-full px-3.5 py-1 text-[10px] font-dm-mono text-slate-400 flex items-center gap-2 shadow-lg backdrop-blur pointer-events-none z-10 whitespace-nowrap">
@@ -996,52 +1009,60 @@ export default function App() {
         gestureActive={gestureActive}
       />
 
-      {/* AI Text-to-Floorplan Generation Modal */}
-      <AIGeneratorModal
-        isOpen={isAIGeneratorOpen}
-        onClose={() => setIsAIGeneratorOpen(false)}
-        plotConfig={plotConfig}
-        onUpdatePlotConfig={setPlotConfig}
-        onApplyPlan={(newElements, name) => {
-          saveHistory();
-          setElements(newElements);
-          setSelectedElementId(null);
-          setProjectMetadata((prev) => ({ ...prev, projectName: name }));
-          sound.playSuccess();
-        }}
-      />
+      {/* Modals wrapped in Suspense and conditionally rendered */}
+      <Suspense fallback={null}>
+        {isAIGeneratorOpen && (
+          <AIGeneratorModal
+            isOpen={isAIGeneratorOpen}
+            onClose={() => setIsAIGeneratorOpen(false)}
+            plotConfig={plotConfig}
+            onUpdatePlotConfig={setPlotConfig}
+            onApplyPlan={(newElements, name) => {
+              saveHistory();
+              setElements(newElements);
+              setSelectedElementId(null);
+              setProjectMetadata((prev) => ({ ...prev, projectName: name }));
+              sound.playSuccess();
+            }}
+          />
+        )}
 
-      {/* Site & Plot Configuration Modal */}
-      <PlotSettingsModal
-        isOpen={isPlotModalOpen}
-        onClose={() => setIsPlotModalOpen(false)}
-        plotConfig={plotConfig}
-        onUpdate={setPlotConfig}
-        builtUpAreaM2={builtUpAreaM2}
-      />
+        {isPlotModalOpen && (
+          <PlotSettingsModal
+            isOpen={isPlotModalOpen}
+            onClose={() => setIsPlotModalOpen(false)}
+            plotConfig={plotConfig}
+            onUpdate={setPlotConfig}
+            builtUpAreaM2={builtUpAreaM2}
+          />
+        )}
 
-      {/* Interactive Templates Gallery */}
-      <TemplatesModal
-        isOpen={isTemplatesModalOpen}
-        onClose={() => setIsTemplatesModalOpen(false)}
-        onSelectTemplate={handleSelectTemplate}
-      />
+        {isTemplatesModalOpen && (
+          <TemplatesModal
+            isOpen={isTemplatesModalOpen}
+            onClose={() => setIsTemplatesModalOpen(false)}
+            onSelectTemplate={handleSelectTemplate}
+          />
+        )}
 
-      {/* AI Design Audit, Area Schedule & BOQ Modal */}
-      <AnalysisModal
-        isOpen={isAnalysisModalOpen}
-        onClose={() => setIsAnalysisModalOpen(false)}
-        elements={elements}
-        onApplyFix={handleExecuteAIAction}
-      />
+        {isAnalysisModalOpen && (
+          <AnalysisModal
+            isOpen={isAnalysisModalOpen}
+            onClose={() => setIsAnalysisModalOpen(false)}
+            elements={elements}
+            onApplyFix={handleExecuteAIAction}
+          />
+        )}
 
-      {/* Project Metadata & Certification Stamp Settings */}
-      <ProjectSettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        metadata={projectMetadata}
-        onUpdateMetadata={(meta) => setProjectMetadata((prev) => ({ ...prev, ...meta }))}
-      />
+        {isSettingsModalOpen && (
+          <ProjectSettingsModal
+            isOpen={isSettingsModalOpen}
+            onClose={() => setIsSettingsModalOpen(false)}
+            metadata={projectMetadata}
+            onUpdateMetadata={(meta) => setProjectMetadata((prev) => ({ ...prev, ...meta }))}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

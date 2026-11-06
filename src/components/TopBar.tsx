@@ -421,6 +421,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             }}
             className="p-1.5 rounded-md hover:bg-[#1e293b] text-slate-400 hover:text-amber-400 transition-colors cursor-pointer"
             title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            aria-label={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
           >
             {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
           </button>
@@ -429,6 +430,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             onClick={toggleMute}
             className="p-1.5 rounded-md hover:bg-[#1e293b] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
             title={muted ? 'Unmute Drafting Sound FX' : 'Mute Drafting Sound FX'}
+            aria-label={muted ? 'Unmute Drafting Sound FX' : 'Mute Drafting Sound FX'}
           >
             {muted ? <VolumeX className="w-3.5 h-3.5 text-red-400" /> : <Volume2 className="w-3.5 h-3.5 text-slate-300" />}
           </button>
@@ -440,6 +442,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             }}
             className="p-1.5 rounded-md hover:bg-[#1e293b] text-slate-400 hover:text-red-400 transition-colors cursor-pointer"
             title="Clear All Canvas Elements"
+            aria-label="Clear All Canvas Elements"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>

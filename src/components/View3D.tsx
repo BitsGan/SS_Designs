@@ -89,6 +89,10 @@ export const View3D: React.FC<View3DProps> = ({
   const [selectedFloorLevel, setSelectedFloorLevel] = useState<number | 'all'>('all');
   const [isExplodedView, setIsExplodedView] = useState(false);
   const [showFlooringLegend, setShowFlooringLegend] = useState(false);
+  const [performanceMode, setPerformanceMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < 768 || (navigator.hardwareConcurrency != null && navigator.hardwareConcurrency <= 4);
+  });
 
   useEffect(() => {
     setActive3DStyle(renderMode);
@@ -143,12 +147,19 @@ export const View3D: React.FC<View3DProps> = ({
       camera.lookAt(0, 1, 0);
     }
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    // Optimized Renderer for High FPS / Low-end device support
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !performanceMode,
+      alpha: true,
+      preserveDrawingBuffer: true,
+      powerPreference: performanceMode ? 'low-power' : 'high-performance',
+    });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setPixelRatio(performanceMode ? 1.0 : Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = !performanceMode;
+    if (!performanceMode) {
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    }
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
     container.innerHTML = '';
@@ -326,9 +337,41 @@ export const View3D: React.FC<View3DProps> = ({
       }
     };
 
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        isDraggingRef.current = true;
+        mouseDownPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        lastMousePosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDraggingRef.current || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - lastMousePosRef.current.x;
+      const dy = e.touches[0].clientY - lastMousePosRef.current.y;
+      lastMousePosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+
+      if (isWalkthrough) {
+        playerRotRef.current.yaw -= dx * 0.005;
+        playerRotRef.current.pitch = Math.max(
+          -Math.PI / 3,
+          Math.min(Math.PI / 3, playerRotRef.current.pitch - dy * 0.005)
+        );
+      } else {
+        currentRotYRef.current += dx * 0.007;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      isDraggingRef.current = false;
+    };
+
     container.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     // Animation & Walkthrough Physics Loop
     let t = 0;
@@ -401,6 +444,9 @@ export const View3D: React.FC<View3DProps> = ({
       container.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      container.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
       window.removeEventListener('resize', handleResize);
       if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
       renderer.dispose();
@@ -422,6 +468,7 @@ export const View3D: React.FC<View3DProps> = ({
     showRoomBadges,
     selectedFloorLevel,
     isExplodedView,
+    performanceMode,
   ]);
 
   return (
@@ -554,9 +601,27 @@ export const View3D: React.FC<View3DProps> = ({
             setShowFlooringLegend(true);
           }}
           className="px-3 py-1.5 rounded-xl text-xs font-dm-mono border border-[#1e3a5f] bg-[#111827]/90 hover:border-cyan-400 text-cyan-300 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
+          aria-label="View Architectural Legend"
         >
           <Info className="w-3.5 h-3.5" />
           <span>Architectural Legend</span>
+        </button>
+
+        {/* Low-End / Mobile Performance Mode Toggle */}
+        <button
+          onClick={() => {
+            sound.playClick();
+            setPerformanceMode(!performanceMode);
+          }}
+          className={`px-3 py-1.5 rounded-xl text-xs font-dm-mono border transition-all cursor-pointer flex items-center gap-1.5 shadow-md ${
+            performanceMode
+              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold shadow-emerald-500/10'
+              : 'bg-[#111827]/90 border-[#1e3a5f] text-slate-300 hover:text-white'
+          }`}
+          title="Toggle High FPS / Low-Power mode for smooth rendering on mobile devices"
+          aria-label="Toggle High FPS Mode"
+        >
+          <span>{performanceMode ? '⚡ Eco FPS (Mobile)' : '💎 Ultra Detail'}</span>
         </button>
       </div>
 
